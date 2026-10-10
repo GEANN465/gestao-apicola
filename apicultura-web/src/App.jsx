@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
@@ -38,6 +39,24 @@ export default function App() {
   const [totalKgProdutor, setTotalKgProdutor] = useState(0)
 
   const [loading, setLoading] = useState(false)
+
+  // Função para excluir produtor
+  const handleDeleteProdutor = async (id) => {
+    const confirmacao = window.confirm("Tem certeza que deseja excluir este produtor?");
+    if (!confirmacao) return;
+
+    const { error } = await supabase
+      .from('produtor')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      alert("Erro ao excluir: " + error.message);
+    } else {
+      setProdutores((prev) => prev.filter((p) => p.id !== id));
+      alert("Produtor excluído com sucesso!");
+    }
+  };
 
   // Carregar todos os dados
   const carregarDados = async () => {
@@ -327,25 +346,27 @@ export default function App() {
           </form>
 
           <h3>Histórico de Entradas Registradas</h3>
-          <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ background: '#fef3c7' }}>
-                <th>Data</th><th>Produtor</th><th>Vínculo</th><th>Produto</th><th>Recipientes</th><th>Peso Líquido (kg)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recebimentos.map(r => (
-                <tr key={r.id}>
-                  <td>{r.data_recebimento}</td>
-                  <td><strong>{r.produtor?.nome || 'Produtor removido'}</strong></td>
-                  <td>{r.produtor?.tipo === 'ASSOCIADO' ? 'Associado' : 'Não Sócio'}</td>
-                  <td>{r.produto}</td>
-                  <td>{r.quantidade_recipientes}x {r.tipo_recipiente}</td>
-                  <td><strong>{r.peso_liquido_kg} kg</strong></td>
+          <div style={{ overflowX: 'auto', width: '100%' }}>
+            <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+              <thead>
+                <tr style={{ background: '#fef3c7' }}>
+                  <th>Data</th><th>Produtor</th><th>Vínculo</th><th>Produto</th><th>Recipientes</th><th>Peso Líquido (kg)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recebimentos.map(r => (
+                  <tr key={r.id}>
+                    <td>{r.data_recebimento}</td>
+                    <td><strong>{r.produtor?.nome || 'Produtor removido'}</strong></td>
+                    <td>{r.produtor?.tipo === 'ASSOCIADO' ? 'Associado' : 'Não Sócio'}</td>
+                    <td>{r.produto}</td>
+                    <td>{r.quantidade_recipientes}x {r.tipo_recipiente}</td>
+                    <td><strong>{r.peso_liquido_kg} kg</strong></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -413,23 +434,25 @@ export default function App() {
           </div>
 
           <h3>Saldo Atual do Estoque de Insumos</h3>
-          <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ background: '#d1fae5' }}>
-                <th>Material / Insumo</th><th>Categoria</th><th>Saldo em Estoque</th><th>Unidade</th>
-              </tr>
-            </thead>
-            <tbody>
-              {insumos.map(i => (
-                <tr key={i.id}>
-                  <td><strong>{i.nome}</strong></td>
-                  <td>{i.categoria}</td>
-                  <td><span style={{ color: i.quantidade_estoque < 50 ? '#dc2626' : '#047857', fontWeight: 'bold' }}>{i.quantidade_estoque}</span></td>
-                  <td>{i.unidade_medida}</td>
+          <div style={{ overflowX: 'auto', width: '100%' }}>
+            <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+              <thead>
+                <tr style={{ background: '#d1fae5' }}>
+                  <th>Material / Insumo</th><th>Categoria</th><th>Saldo em Estoque</th><th>Unidade</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {insumos.map(i => (
+                  <tr key={i.id}>
+                    <td><strong>{i.nome}</strong></td>
+                    <td>{i.categoria}</td>
+                    <td><span style={{ color: i.quantidade_estoque < 50 ? '#dc2626' : '#047857', fontWeight: 'bold' }}>{i.quantidade_estoque}</span></td>
+                    <td>{i.unidade_medida}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -472,29 +495,31 @@ export default function App() {
           </form>
 
           <h3>Histórico de Acertos Financeiros</h3>
-          <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ background: '#f3e8ff' }}>
-                <th>Data</th><th>Produtor</th><th>Total kg Mel</th><th>Preço/kg</th><th>Valor Total (R$)</th><th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {repasses.map(rep => (
-                <tr key={rep.id}>
-                  <td>{rep.data_acerto}</td>
-                  <td><strong>{rep.produtor?.nome || 'Desconhecido'}</strong></td>
-                  <td>{rep.total_kg_mel} kg</td>
-                  <td>R$ {parseFloat(rep.preco_por_kg).toFixed(2)}</td>
-                  <td><strong>R$ {parseFloat(rep.valor_total).toFixed(2)}</strong></td>
-                  <td>
-                    <span style={{ padding: '4px 8px', borderRadius: '4px', background: rep.status_pagamento === 'PAGO' ? '#dcfce7' : '#fef9c3', color: rep.status_pagamento === 'PAGO' ? '#15803d' : '#a16207', fontWeight: 'bold' }}>
-                      {rep.status_pagamento}
-                    </span>
-                  </td>
+          <div style={{ overflowX: 'auto', width: '100%' }}>
+            <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+              <thead>
+                <tr style={{ background: '#f3e8ff' }}>
+                  <th>Data</th><th>Produtor</th><th>Total kg Mel</th><th>Preço/kg</th><th>Valor Total (R$)</th><th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {repasses.map(rep => (
+                  <tr key={rep.id}>
+                    <td>{rep.data_acerto}</td>
+                    <td><strong>{rep.produtor?.nome || 'Desconhecido'}</strong></td>
+                    <td>{rep.total_kg_mel} kg</td>
+                    <td>R$ {parseFloat(rep.preco_por_kg).toFixed(2)}</td>
+                    <td><strong>R$ {parseFloat(rep.valor_total).toFixed(2)}</strong></td>
+                    <td>
+                      <span style={{ padding: '4px 8px', borderRadius: '4px', background: rep.status_pagamento === 'PAGO' ? '#dcfce7' : '#fef9c3', color: rep.status_pagamento === 'PAGO' ? '#15803d' : '#a16207', fontWeight: 'bold' }}>
+                        {rep.status_pagamento}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -529,24 +554,43 @@ export default function App() {
           </form>
 
           <h3>Produtores Cadastrados</h3>
-          <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#eee' }}>
-                <th>ID</th><th>Nome</th><th>CPF/CNPJ</th><th>Tipo</th><th>Telefone</th>
-              </tr>
-            </thead>
-            <tbody>
-              {produtores.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.id}</td>
-                  <td>{p.nome}</td>
-                  <td>{p.cpf_cnpj || '-'}</td>
-                  <td>{p.tipo}</td>
-                  <td>{p.telefone || '-'}</td>
+          <div style={{ overflowX: 'auto', width: '100%' }}>
+            <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+              <thead>
+                <tr style={{ background: '#eee' }}>
+                  <th>ID</th><th>Nome</th><th>CPF/CNPJ</th><th>Tipo</th><th>Telefone</th><th>Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {produtores.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.id}</td>
+                    <td>{p.nome}</td>
+                    <td>{p.cpf_cnpj || '-'}</td>
+                    <td>{p.tipo}</td>
+                    <td>{p.telefone || '-'}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteProdutor(p.id)}
+                        style={{
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          padding: '6px 12px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        🗑️ Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
