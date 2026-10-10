@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
@@ -40,7 +39,9 @@ export default function App() {
 
   const [loading, setLoading] = useState(false)
 
-  // Função para excluir produtor
+  // ---------------- FUNÇÕES DE EXCLUSÃO (CRUD) ---------------- //
+
+  // Excluir Produtor
   const handleDeleteProdutor = async (id) => {
     const confirmacao = window.confirm("Tem certeza que deseja excluir este produtor?");
     if (!confirmacao) return;
@@ -50,40 +51,87 @@ export default function App() {
       .delete()
       .eq('id', id);
 
-    if (error) {
-      alert("Erro ao excluir: " + error.message);
-    } else {
+    if (error) alert("Erro ao excluir: " + error.message);
+    else {
       setProdutores((prev) => prev.filter((p) => p.id !== id));
       alert("Produtor excluído com sucesso!");
     }
   };
 
-  // Carregar todos os dados
+  // Excluir Recebimento de Mel/Cera
+  const handleDeleteRecebimento = async (id) => {
+    const confirmacao = window.confirm("Tem certeza que deseja excluir este recebimento?");
+    if (!confirmacao) return;
+
+    const { error } = await supabase
+      .from('recebimento')
+      .delete()
+      .eq('id', id);
+
+    if (error) alert("Erro ao excluir recebimento: " + error.message);
+    else {
+      setRecebimentos((prev) => prev.filter((r) => r.id !== id));
+      alert("Recebimento excluído com sucesso!");
+    }
+  };
+
+  // Excluir Insumo do Catálogo
+  const handleDeleteInsumo = async (id) => {
+    const confirmacao = window.confirm("Tem certeza que deseja excluir este material do estoque?");
+    if (!confirmacao) return;
+
+    const { error } = await supabase
+      .from('insumo')
+      .delete()
+      .eq('id', id);
+
+    if (error) alert("Erro ao excluir insumo: " + error.message);
+    else {
+      setInsumos((prev) => prev.filter((i) => i.id !== id));
+      alert("Material excluído do catálogo com sucesso!");
+    }
+  };
+
+  // Excluir Repasse Financeiro
+  const handleDeleteRepasse = async (id) => {
+    const confirmacao = window.confirm("Tem certeza que deseja excluir este registro de repasse?");
+    if (!confirmacao) return;
+
+    const { error } = await supabase
+      .from('repasse_financeiro')
+      .delete()
+      .eq('id', id);
+
+    if (error) alert("Erro ao excluir repasse: " + error.message);
+    else {
+      setRepasses((prev) => prev.filter((rep) => rep.id !== id));
+      alert("Repasse financeiro excluído com sucesso!");
+    }
+  };
+
+  // ---------------- CARREGAR DADOS DO SUPABASE ---------------- //
+
   const carregarDados = async () => {
     setLoading(true)
     
-    // Buscar Produtores
     const { data: dataProdutores } = await supabase
       .from('produtor')
       .select('*')
       .order('nome', { ascending: true })
     setProdutores(dataProdutores || [])
 
-    // Buscar Recebimentos
     const { data: dataRecebimentos } = await supabase
       .from('recebimento')
       .select('*, produtor(nome, tipo)')
       .order('id', { ascending: false })
     setRecebimentos(dataRecebimentos || [])
 
-    // Buscar Insumos
     const { data: dataInsumos } = await supabase
       .from('insumo')
       .select('*')
       .order('nome', { ascending: true })
     setInsumos(dataInsumos || [])
 
-    // Buscar Repasses Financeiros
     const { data: dataRepasses } = await supabase
       .from('repasse_financeiro')
       .select('*, produtor(nome, tipo)')
@@ -97,7 +145,6 @@ export default function App() {
     carregarDados()
   }, [])
 
-  // Atualizar total de kg quando escolhe um produtor no financeiro
   const handleSelecionarProdutorFin = (id) => {
     setProdutorFinId(id)
     if (!id) {
@@ -105,7 +152,6 @@ export default function App() {
       return
     }
 
-    // Soma apenas as entradas de MEL do produtor selecionado
     const total = recebimentos
       .filter(r => r.produtor_id === parseInt(id) && r.produto === 'MEL')
       .reduce((acc, curr) => acc + parseFloat(curr.peso_liquido_kg || 0), 0)
@@ -350,7 +396,7 @@ export default function App() {
             <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
               <thead>
                 <tr style={{ background: '#fef3c7' }}>
-                  <th>Data</th><th>Produtor</th><th>Vínculo</th><th>Produto</th><th>Recipientes</th><th>Peso Líquido (kg)</th>
+                  <th>Data</th><th>Produtor</th><th>Vínculo</th><th>Produto</th><th>Recipientes</th><th>Peso Líquido (kg)</th><th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -362,6 +408,15 @@ export default function App() {
                     <td>{r.produto}</td>
                     <td>{r.quantidade_recipientes}x {r.tipo_recipiente}</td>
                     <td><strong>{r.peso_liquido_kg} kg</strong></td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRecebimento(r.id)}
+                        style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        🗑️ Excluir
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -438,7 +493,7 @@ export default function App() {
             <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
               <thead>
                 <tr style={{ background: '#d1fae5' }}>
-                  <th>Material / Insumo</th><th>Categoria</th><th>Saldo em Estoque</th><th>Unidade</th>
+                  <th>Material / Insumo</th><th>Categoria</th><th>Saldo em Estoque</th><th>Unidade</th><th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -448,6 +503,15 @@ export default function App() {
                     <td>{i.categoria}</td>
                     <td><span style={{ color: i.quantidade_estoque < 50 ? '#dc2626' : '#047857', fontWeight: 'bold' }}>{i.quantidade_estoque}</span></td>
                     <td>{i.unidade_medida}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteInsumo(i.id)}
+                        style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        🗑️ Excluir
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -499,7 +563,7 @@ export default function App() {
             <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
               <thead>
                 <tr style={{ background: '#f3e8ff' }}>
-                  <th>Data</th><th>Produtor</th><th>Total kg Mel</th><th>Preço/kg</th><th>Valor Total (R$)</th><th>Status</th>
+                  <th>Data</th><th>Produtor</th><th>Total kg Mel</th><th>Preço/kg</th><th>Valor Total (R$)</th><th>Status</th><th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -514,6 +578,15 @@ export default function App() {
                       <span style={{ padding: '4px 8px', borderRadius: '4px', background: rep.status_pagamento === 'PAGO' ? '#dcfce7' : '#fef9c3', color: rep.status_pagamento === 'PAGO' ? '#15803d' : '#a16207', fontWeight: 'bold' }}>
                         {rep.status_pagamento}
                       </span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRepasse(rep.id)}
+                        style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        🗑️ Excluir
+                      </button>
                     </td>
                   </tr>
                 ))}
