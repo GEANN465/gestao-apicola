@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
 export default function App() {
-  const [abaAtiva, setAbaAtiva] = useState('recebimentos') // 'recebimentos', 'insumos', 'financeiro', 'produtores'
+  const [abaAtiva, setAbaAtiva] = useState('recebimentos')
   
   // Estados para Produtores
   const [produtores, setProdutores] = useState([])
@@ -39,18 +40,13 @@ export default function App() {
 
   const [loading, setLoading] = useState(false)
 
-  // ---------------- FUNÇÕES DE EXCLUSÃO (CRUD) ---------------- //
+  // ---------------- FUNÇÕES DE EXCLUSÃO E ALTERAÇÃO ---------------- //
 
-  // Excluir Produtor
   const handleDeleteProdutor = async (id) => {
     const confirmacao = window.confirm("Tem certeza que deseja excluir este produtor?");
     if (!confirmacao) return;
 
-    const { error } = await supabase
-      .from('produtor')
-      .delete()
-      .eq('id', id);
-
+    const { error } = await supabase.from('produtor').delete().eq('id', id);
     if (error) alert("Erro ao excluir: " + error.message);
     else {
       setProdutores((prev) => prev.filter((p) => p.id !== id));
@@ -58,16 +54,11 @@ export default function App() {
     }
   };
 
-  // Excluir Recebimento de Mel/Cera
   const handleDeleteRecebimento = async (id) => {
     const confirmacao = window.confirm("Tem certeza que deseja excluir este recebimento?");
     if (!confirmacao) return;
 
-    const { error } = await supabase
-      .from('recebimento')
-      .delete()
-      .eq('id', id);
-
+    const { error } = await supabase.from('recebimento').delete().eq('id', id);
     if (error) alert("Erro ao excluir recebimento: " + error.message);
     else {
       setRecebimentos((prev) => prev.filter((r) => r.id !== id));
@@ -75,16 +66,11 @@ export default function App() {
     }
   };
 
-  // Excluir Insumo do Catálogo
   const handleDeleteInsumo = async (id) => {
     const confirmacao = window.confirm("Tem certeza que deseja excluir este material do estoque?");
     if (!confirmacao) return;
 
-    const { error } = await supabase
-      .from('insumo')
-      .delete()
-      .eq('id', id);
-
+    const { error } = await supabase.from('insumo').delete().eq('id', id);
     if (error) alert("Erro ao excluir insumo: " + error.message);
     else {
       setInsumos((prev) => prev.filter((i) => i.id !== id));
@@ -92,20 +78,33 @@ export default function App() {
     }
   };
 
-  // Excluir Repasse Financeiro
   const handleDeleteRepasse = async (id) => {
     const confirmacao = window.confirm("Tem certeza que deseja excluir este registro de repasse?");
     if (!confirmacao) return;
 
-    const { error } = await supabase
-      .from('repasse_financeiro')
-      .delete()
-      .eq('id', id);
-
+    const { error } = await supabase.from('repasse_financeiro').delete().eq('id', id);
     if (error) alert("Erro ao excluir repasse: " + error.message);
     else {
       setRepasses((prev) => prev.filter((rep) => rep.id !== id));
       alert("Repasse financeiro excluído com sucesso!");
+    }
+  };
+
+  // Alternar status de pagamento (Pendente <-> Pago)
+  const handleAlternarStatus = async (id, statusAtual) => {
+    const novoStatus = statusAtual === 'PENDENTE' ? 'PAGO' : 'PENDENTE';
+    
+    const { error } = await supabase
+      .from('repasse_financeiro')
+      .update({ status_pagamento: novoStatus })
+      .eq('id', id);
+
+    if (error) {
+      alert("Erro ao atualizar status: " + error.message);
+    } else {
+      setRepasses((prev) =>
+        prev.map((rep) => (rep.id === id ? { ...rep, status_pagamento: novoStatus } : rep))
+      );
     }
   };
 
@@ -114,28 +113,16 @@ export default function App() {
   const carregarDados = async () => {
     setLoading(true)
     
-    const { data: dataProdutores } = await supabase
-      .from('produtor')
-      .select('*')
-      .order('nome', { ascending: true })
+    const { data: dataProdutores } = await supabase.from('produtor').select('*').order('nome', { ascending: true })
     setProdutores(dataProdutores || [])
 
-    const { data: dataRecebimentos } = await supabase
-      .from('recebimento')
-      .select('*, produtor(nome, tipo)')
-      .order('id', { ascending: false })
+    const { data: dataRecebimentos } = await supabase.from('recebimento').select('*, produtor(nome, tipo)').order('id', { ascending: false })
     setRecebimentos(dataRecebimentos || [])
 
-    const { data: dataInsumos } = await supabase
-      .from('insumo')
-      .select('*')
-      .order('nome', { ascending: true })
+    const { data: dataInsumos } = await supabase.from('insumo').select('*').order('nome', { ascending: true })
     setInsumos(dataInsumos || [])
 
-    const { data: dataRepasses } = await supabase
-      .from('repasse_financeiro')
-      .select('*, produtor(nome, tipo)')
-      .order('id', { ascending: false })
+    const { data: dataRepasses } = await supabase.from('repasse_financeiro').select('*, produtor(nome, tipo)').order('id', { ascending: false })
     setRepasses(dataRepasses || [])
 
     setLoading(false)
@@ -159,75 +146,51 @@ export default function App() {
     setTotalKgProdutor(total)
   }
 
-  // Cadastrar Produtor
   const handleSalvarProdutor = async (e) => {
     e.preventDefault()
     if (!nome) return alert('Informe o nome do produtor!')
 
-    const { error } = await supabase.from('produtor').insert([
-      { nome, cpf_cnpj: cpfCnpj, tipo, telefone }
-    ])
-
+    const { error } = await supabase.from('produtor').insert([{ nome, cpf_cnpj: cpfCnpj, tipo, telefone }])
     if (error) alert('Erro ao cadastrar: ' + error.message)
     else {
       alert('Produtor cadastrado com sucesso!')
-      setNome('')
-      setCpfCnpj('')
-      setTelefone('')
-      carregarDados()
+      setNome(''); setCpfCnpj(''); setTelefone(''); carregarDados()
     }
   }
 
-  // Cadastrar Recebimento
   const handleSalvarRecebimento = async (e) => {
     e.preventDefault()
     if (!produtorId) return alert('Selecione um produtor!')
     if (!pesoLiquido || pesoLiquido <= 0) return alert('Informe um peso líquido válido!')
 
-    const { error } = await supabase.from('recebimento').insert([
-      {
-        produtor_id: produtorId,
-        produto,
-        tipo_recipiente: tipoRecipiente,
-        quantidade_recipientes: parseInt(quantidadeRecipientes) || 1,
-        peso_liquido_kg: parseFloat(pesoLiquido),
-        data_recebimento: dataRecebimento,
-        observacao
-      }
-    ])
+    const { error } = await supabase.from('recebimento').insert([{
+      produtor_id: produtorId, produto, tipo_recipiente: tipoRecipiente,
+      quantidade_recipientes: parseInt(quantidadeRecipientes) || 1,
+      peso_liquido_kg: parseFloat(pesoLiquido), data_recebimento: dataRecebimento, observacao
+    }])
 
     if (error) alert('Erro ao registrar recebimento: ' + error.message)
     else {
       alert('Entrada de ' + produto + ' registrada com sucesso!')
-      setPesoLiquido('')
-      setObservacao('')
-      carregarDados()
+      setPesoLiquido(''); setObservacao(''); carregarDados()
     }
   }
 
-  // Cadastrar Novo Insumo
   const handleCriarInsumo = async (e) => {
     e.preventDefault()
     if (!novoInsumoNome) return alert('Informe o nome do material!')
 
-    const { error } = await supabase.from('insumo').insert([
-      {
-        nome: novoInsumoNome,
-        categoria: novoInsumoCategoria,
-        unidade_medida: novoInsumoUnidade,
-        quantidade_estoque: 0
-      }
-    ])
+    const { error } = await supabase.from('insumo').insert([{
+      nome: novoInsumoNome, categoria: novoInsumoCategoria, unidade_medida: novoInsumoUnidade, quantidade_estoque: 0
+    }])
 
     if (error) alert('Erro ao criar insumo: ' + error.message)
     else {
       alert('Material cadastrado no catálogo!')
-      setNovoInsumoNome('')
-      carregarDados()
+      setNovoInsumoNome(''); carregarDados()
     }
   }
 
-  // Movimentar Insumo
   const handleMovimentarInsumo = async (e) => {
     e.preventDefault()
     if (!insumoId) return alert('Selecione o material!')
@@ -254,12 +217,9 @@ export default function App() {
     await supabase.from('insumo').update({ quantidade_estoque: novoEstoque }).eq('id', insumoId)
 
     alert('Movimentação registrada!')
-    setQtdMovimentacao('')
-    setObsInsumo('')
-    carregarDados()
+    setQtdMovimentacao(''); setObsInsumo(''); carregarDados()
   }
 
-  // Lançar Acerto Financeiro
   const handleGerarRepasse = async (e) => {
     e.preventDefault()
     if (!produtorFinId) return alert('Selecione um produtor!')
@@ -267,22 +227,15 @@ export default function App() {
 
     const valorTotal = totalKgProdutor * parseFloat(precoKg)
 
-    const { error } = await supabase.from('repasse_financeiro').insert([
-      {
-        produtor_id: produtorFinId,
-        total_kg_mel: totalKgProdutor,
-        preco_por_kg: parseFloat(precoKg),
-        valor_total: valorTotal,
-        status_pagamento: 'PENDENTE'
-      }
-    ])
+    const { error } = await supabase.from('repasse_financeiro').insert([{
+      produtor_id: produtorFinId, total_kg_mel: totalKgProdutor,
+      preco_por_kg: parseFloat(precoKg), valor_total: valorTotal, status_pagamento: 'PENDENTE'
+    }])
 
     if (error) alert('Erro ao gerar repasse: ' + error.message)
     else {
       alert('Acerto financeiro gerado com sucesso!')
-      setProdutorFinId('')
-      setTotalKgProdutor(0)
-      carregarDados()
+      setProdutorFinId(''); setTotalKgProdutor(0); carregarDados()
     }
   }
 
@@ -295,44 +248,28 @@ export default function App() {
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button 
             onClick={() => setAbaAtiva('recebimentos')}
-            style={{
-              padding: '10px 18px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer',
-              backgroundColor: abaAtiva === 'recebimentos' ? '#d97706' : '#edf2f7',
-              color: abaAtiva === 'recebimentos' ? '#fff' : '#4a5568'
-            }}
+            style={{ padding: '10px 18px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: abaAtiva === 'recebimentos' ? '#d97706' : '#edf2f7', color: abaAtiva === 'recebimentos' ? '#fff' : '#4a5568' }}
           >
             🍯 Recebimento de Mel / Cera
           </button>
           
           <button 
             onClick={() => setAbaAtiva('insumos')}
-            style={{
-              padding: '10px 18px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer',
-              backgroundColor: abaAtiva === 'insumos' ? '#059669' : '#edf2f7',
-              color: abaAtiva === 'insumos' ? '#fff' : '#4a5568'
-            }}
+            style={{ padding: '10px 18px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: abaAtiva === 'insumos' ? '#059669' : '#edf2f7', color: abaAtiva === 'insumos' ? '#fff' : '#4a5568' }}
           >
             📦 Controle de Insumos / Estoque
           </button>
 
           <button 
             onClick={() => setAbaAtiva('financeiro')}
-            style={{
-              padding: '10px 18px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer',
-              backgroundColor: abaAtiva === 'financeiro' ? '#7c3aed' : '#edf2f7',
-              color: abaAtiva === 'financeiro' ? '#fff' : '#4a5568'
-            }}
+            style={{ padding: '10px 18px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: abaAtiva === 'financeiro' ? '#7c3aed' : '#edf2f7', color: abaAtiva === 'financeiro' ? '#fff' : '#4a5568' }}
           >
             💰 Repasse / Acerto Financeiro
           </button>
 
           <button 
             onClick={() => setAbaAtiva('produtores')}
-            style={{
-              padding: '10px 18px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer',
-              backgroundColor: abaAtiva === 'produtores' ? '#2563eb' : '#edf2f7',
-              color: abaAtiva === 'produtores' ? '#fff' : '#4a5568'
-            }}
+            style={{ padding: '10px 18px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: abaAtiva === 'produtores' ? '#2563eb' : '#edf2f7', color: abaAtiva === 'produtores' ? '#fff' : '#4a5568' }}
           >
             👤 Cadastro de Produtores
           </button>
@@ -409,11 +346,7 @@ export default function App() {
                     <td>{r.quantidade_recipientes}x {r.tipo_recipiente}</td>
                     <td><strong>{r.peso_liquido_kg} kg</strong></td>
                     <td style={{ textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteRecebimento(r.id)}
-                        style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                      >
+                      <button type="button" onClick={() => handleDeleteRecebimento(r.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                         🗑️ Excluir
                       </button>
                     </td>
@@ -504,11 +437,7 @@ export default function App() {
                     <td><span style={{ color: i.quantidade_estoque < 50 ? '#dc2626' : '#047857', fontWeight: 'bold' }}>{i.quantidade_estoque}</span></td>
                     <td>{i.unidade_medida}</td>
                     <td style={{ textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteInsumo(i.id)}
-                        style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                      >
+                      <button type="button" onClick={() => handleDeleteInsumo(i.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                         🗑️ Excluir
                       </button>
                     </td>
@@ -559,6 +488,8 @@ export default function App() {
           </form>
 
           <h3>Histórico de Acertos Financeiros</h3>
+          <p style={{ fontSize: '13px', color: '#666' }}>💡 Dica: Clique no botão de status (PENDENTE / PAGO) para alternar o estado do pagamento instantaneamente.</p>
+          
           <div style={{ overflowX: 'auto', width: '100%' }}>
             <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
               <thead>
@@ -574,17 +505,26 @@ export default function App() {
                     <td>{rep.total_kg_mel} kg</td>
                     <td>R$ {parseFloat(rep.preco_por_kg).toFixed(2)}</td>
                     <td><strong>R$ {parseFloat(rep.valor_total).toFixed(2)}</strong></td>
-                    <td>
-                      <span style={{ padding: '4px 8px', borderRadius: '4px', background: rep.status_pagamento === 'PAGO' ? '#dcfce7' : '#fef9c3', color: rep.status_pagamento === 'PAGO' ? '#15803d' : '#a16207', fontWeight: 'bold' }}>
-                        {rep.status_pagamento}
-                      </span>
-                    </td>
                     <td style={{ textAlign: 'center' }}>
                       <button
                         type="button"
-                        onClick={() => handleDeleteRepasse(rep.id)}
-                        style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                        onClick={() => handleAlternarStatus(rep.id, rep.status_pagamento)}
+                        style={{ 
+                          padding: '6px 12px', 
+                          borderRadius: '6px', 
+                          border: 'none',
+                          background: rep.status_pagamento === 'PAGO' ? '#dcfce7' : '#fef9c3', 
+                          color: rep.status_pagamento === 'PAGO' ? '#15803d' : '#a16207', 
+                          fontWeight: 'bold',
+                          cursor: 'pointer'
+                        }}
+                        title="Clique para alternar entre PENDENTE e PAGO"
                       >
+                        {rep.status_pagamento} 🔄
+                      </button>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button type="button" onClick={() => handleDeleteRepasse(rep.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                         🗑️ Excluir
                       </button>
                     </td>
@@ -643,19 +583,7 @@ export default function App() {
                     <td>{p.tipo}</td>
                     <td>{p.telefone || '-'}</td>
                     <td style={{ textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteProdutor(p.id)}
-                        style={{
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          padding: '6px 12px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold'
-                        }}
-                      >
+                      <button type="button" onClick={() => handleDeleteProdutor(p.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                         🗑️ Excluir
                       </button>
                     </td>
