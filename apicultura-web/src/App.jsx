@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
@@ -11,6 +10,7 @@ export default function App() {
   const [cpfCnpj, setCpfCnpj] = useState('')
   const [tipo, setTipo] = useState('ASSOCIADO')
   const [telefone, setTelefone] = useState('')
+  const [buscaProdutor, setBuscaProdutor] = useState('') // Barra de pesquisa de produtores
 
   // Estados para Recebimentos
   const [recebimentos, setRecebimentos] = useState([])
@@ -37,6 +37,7 @@ export default function App() {
   const [produtorFinId, setProdutorFinId] = useState('')
   const [precoKg, setPrecoKg] = useState('15.00')
   const [totalKgProdutor, setTotalKgProdutor] = useState(0)
+  const [buscaFinanceiro, setBuscaFinanceiro] = useState('') // Barra de pesquisa do financeiro
 
   const [loading, setLoading] = useState(false)
 
@@ -238,6 +239,17 @@ export default function App() {
       setProdutorFinId(''); setTotalKgProdutor(0); carregarDados()
     }
   }
+
+  // Listas filtradas pela pesquisa
+  const produtoresFiltrados = produtores.filter(p => 
+    p.nome.toLowerCase().includes(buscaProdutor.toLowerCase()) ||
+    (p.cpf_cnpj && p.cpf_cnpj.toLowerCase().includes(buscaProdutor.toLowerCase()))
+  )
+
+  const repassesFiltrados = repasses.filter(rep => {
+    const nomeProdutor = rep.produtor?.nome || ''
+    return nomeProdutor.toLowerCase().includes(buscaFinanceiro.toLowerCase())
+  })
 
   return (
     <div style={{ maxWidth: '980px', margin: '30px auto', fontFamily: 'Arial, sans-serif', padding: '0 20px' }}>
@@ -487,9 +499,23 @@ export default function App() {
             </button>
           </form>
 
-          <h3>Histórico de Acertos Financeiros</h3>
-          <p style={{ fontSize: '13px', color: '#666' }}>💡 Dica: Clique no botão de status (PENDENTE / PAGO) para alternar o estado do pagamento instantaneamente.</p>
-          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
+            <h3 style={{ margin: 0 }}>Histórico de Acertos Financeiros</h3>
+            
+            {/* Barra de Pesquisa no Financeiro */}
+            <input 
+              type="text" 
+              placeholder="🔍 Pesquisar por produtor..." 
+              value={buscaFinanceiro} 
+              onChange={(e) => setBuscaFinanceiro(e.target.value)} 
+              style={{ padding: '8px 12px', width: '250px', borderRadius: '6px', border: '1px solid #c084fc', fontSize: '14px' }}
+            />
+          </div>
+
+          <p style={{ fontSize: '13px', color: '#666', marginTop: 0 }}>
+            💡 Dica: Clique no botão de status (PENDENTE / PAGO) para alternar o estado do pagamento.
+          </p>
+
           <div style={{ overflowX: 'auto', width: '100%' }}>
             <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
               <thead>
@@ -498,38 +524,46 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {repasses.map(rep => (
-                  <tr key={rep.id}>
-                    <td>{rep.data_acerto}</td>
-                    <td><strong>{rep.produtor?.nome || 'Desconhecido'}</strong></td>
-                    <td>{rep.total_kg_mel} kg</td>
-                    <td>R$ {parseFloat(rep.preco_por_kg).toFixed(2)}</td>
-                    <td><strong>R$ {parseFloat(rep.valor_total).toFixed(2)}</strong></td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleAlternarStatus(rep.id, rep.status_pagamento)}
-                        style={{ 
-                          padding: '6px 12px', 
-                          borderRadius: '6px', 
-                          border: 'none',
-                          background: rep.status_pagamento === 'PAGO' ? '#dcfce7' : '#fef9c3', 
-                          color: rep.status_pagamento === 'PAGO' ? '#15803d' : '#a16207', 
-                          fontWeight: 'bold',
-                          cursor: 'pointer'
-                        }}
-                        title="Clique para alternar entre PENDENTE e PAGO"
-                      >
-                        {rep.status_pagamento} 🔄
-                      </button>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button type="button" onClick={() => handleDeleteRepasse(rep.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                        🗑️ Excluir
-                      </button>
+                {repassesFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: 'center', color: '#666' }}>
+                      Nenhum registro encontrado para "{buscaFinanceiro}".
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  repassesFiltrados.map(rep => (
+                    <tr key={rep.id}>
+                      <td>{rep.data_acerto}</td>
+                      <td><strong>{rep.produtor?.nome || 'Desconhecido'}</strong></td>
+                      <td>{rep.total_kg_mel} kg</td>
+                      <td>R$ {parseFloat(rep.preco_por_kg).toFixed(2)}</td>
+                      <td><strong>R$ {parseFloat(rep.valor_total).toFixed(2)}</strong></td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleAlternarStatus(rep.id, rep.status_pagamento)}
+                          style={{ 
+                            padding: '6px 12px', 
+                            borderRadius: '6px', 
+                            border: 'none',
+                            background: rep.status_pagamento === 'PAGO' ? '#dcfce7' : '#fef9c3', 
+                            color: rep.status_pagamento === 'PAGO' ? '#15803d' : '#a16207', 
+                            fontWeight: 'bold',
+                            cursor: 'pointer'
+                          }}
+                          title="Clique para alternar entre PENDENTE e PAGO"
+                        >
+                          {rep.status_pagamento} 🔄
+                        </button>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button type="button" onClick={() => handleDeleteRepasse(rep.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                          🗑️ Excluir
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -566,7 +600,19 @@ export default function App() {
             </button>
           </form>
 
-          <h3>Produtores Cadastrados</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
+            <h3 style={{ margin: 0 }}>Produtores Cadastrados ({produtoresFiltrados.length})</h3>
+            
+            {/* Barra de Pesquisa em Produtores */}
+            <input 
+              type="text" 
+              placeholder="🔍 Buscar por nome ou CPF..." 
+              value={buscaProdutor} 
+              onChange={(e) => setBuscaProdutor(e.target.value)} 
+              style={{ padding: '8px 12px', width: '250px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+            />
+          </div>
+
           <div style={{ overflowX: 'auto', width: '100%' }}>
             <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
               <thead>
@@ -575,20 +621,28 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {produtores.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.id}</td>
-                    <td>{p.nome}</td>
-                    <td>{p.cpf_cnpj || '-'}</td>
-                    <td>{p.tipo}</td>
-                    <td>{p.telefone || '-'}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button type="button" onClick={() => handleDeleteProdutor(p.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                        🗑️ Excluir
-                      </button>
+                {produtoresFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', color: '#666' }}>
+                      Nenhum produtor encontrado para "{buscaProdutor}".
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  produtoresFiltrados.map((p) => (
+                    <tr key={p.id}>
+                      <td>{p.id}</td>
+                      <td>{p.nome}</td>
+                      <td>{p.cpf_cnpj || '-'}</td>
+                      <td>{p.tipo}</td>
+                      <td>{p.telefone || '-'}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button type="button" onClick={() => handleDeleteProdutor(p.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                          🗑️ Excluir
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
